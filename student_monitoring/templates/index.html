@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lektoriaus aplinka</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .active {
+            color: green;
+            font-weight: bold;
+        }
+        .inactive {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>Studentų būklė ir komandos</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Studento IP</th>
+                <th>Aktyvumas</th>
+                <th>Komandos</th>
+            </tr>
+        </thead>
+        <tbody id="students-table">
+            {% for student_ip, commands in students.items() %}
+            <tr id="student-{{ student_ip }}">
+                <td>{{ student_ip }}</td>
+                <td class="{{ 'active' if status[student_ip]['active'] else 'inactive' }}">
+                    {{ 'Aktyvus' if status[student_ip]['active'] else 'Neaktyvus' }}
+                </td>
+                <td>
+                    <ul>
+                        {% for log in commands %}
+                        <li>{{ log.command }} ({{ log.timestamp }})</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        const socket = io();
+
+        // Kai gauname naujus duomenis iš serverio
+        socket.on("update_logs", function (data) {
+            const studentIp = data.student_ip;
+            const commands = data.commands;
+
+            let studentRow = document.getElementById(`student-${studentIp}`);
+            if (!studentRow) {
+                // Sukuriame naują eilutę, jei jos nėra
+                const tableBody = document.getElementById("students-table");
+                studentRow = document.createElement("tr");
+                studentRow.id = `student-${studentIp}`;
+                studentRow.innerHTML = `
+                    <td>${studentIp}</td>
+                    <td class="active">Aktyvus</td>
+                    <td><ul></ul></td>
+                `;
+                tableBody.appendChild(studentRow);
+            }
+
+            // Atnaujiname aktyvumo statusą
+            const statusCell = studentRow.children[1];
+            statusCell.className = "active";
+            statusCell.textContent = "Aktyvus";
+
+            // Pridedame naujas komandas
+            const commandsCell = studentRow.children[2].querySelector("ul");
+            commands.forEach(cmd => {
+                const listItem = document.createElement("li");
+                listItem.textContent = cmd + " (" + new Date().toISOString() + ")";
+                commandsCell.appendChild(listItem);
+            });
+        });
+    </script>
+</body>
+</html>
